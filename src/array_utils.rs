@@ -1,6 +1,8 @@
 use std::ops::Add;
-use ndarray::{Array2};
+use ndarray::{Array2, AssignElem};
 use num::Zero;
+use rand::Rng;
+use rand::rngs::ThreadRng;
 use crate::math_utils;
 
 
@@ -26,14 +28,26 @@ pub fn add<T>(lhs: &Array2<T>, rhs: &Array2<T>) -> Array2<T>
 
 /// Sigmoid
 ///
-/// Perform sigmoid on an 2 dimensional array
+/// Perform sigmoid function on a 2 dimensional array
 ///
 /// * `arr` - Array to process
 pub fn sig(arr: &mut Array2<f32>) {
     for i in 0..arr.shape()[0] {
         for j in 0..arr.shape()[1] {
-            math_utils::sig(arr[[i, j]]);
+            arr[[i, j]] = math_utils::sigf(arr[[i, j]]);
         }
+    }
+}
+
+/// Randomize all elements of a 2 dimensional array
+///
+/// * `arr` - 2 dimensional array to modify
+/// * `lower` - lower bounds of random value (inclusive)
+/// * `upper` - upper bounds of random value (inclusive)
+pub fn randomize_array(arr: &mut Array2<f32>, lower: f32, upper: f32) {
+    let mut rng: ThreadRng = rand::thread_rng();
+    for val in arr {
+        val.assign_elem(rng.gen_range(lower..=upper))
     }
 }
 
