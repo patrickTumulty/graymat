@@ -1,7 +1,7 @@
 
 pub mod mlrust {
     use std::fmt::{Display, Formatter};
-    use std::ops::{Index, IndexMut};
+    use std::ops::{Index, IndexMut, Sub, SubAssign};
     use ndarray::{Array2};
 
     pub struct ColumnVector {
@@ -53,6 +53,20 @@ pub mod mlrust {
     impl Display for ColumnVector {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             write!(f, "{}\n", self.data.to_string())
+        }
+    }
+
+    impl SubAssign for ColumnVector {
+        fn sub_assign(&mut self, rhs: Self) {
+            self.data.sub_assign(rhs.get_data());
+        }
+    }
+
+    impl Sub for ColumnVector {
+        type Output = ColumnVector;
+
+        fn sub(self, rhs: Self) -> Self::Output {
+            return ColumnVector::from(&(self.data.to_owned() - rhs.get_data().to_owned()));
         }
     }
 }
