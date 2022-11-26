@@ -1,10 +1,10 @@
-
+use std::f32::consts::E;
 
 /// Sigmoid Function
 ///
 /// * `val` - Float value
 pub fn sigf(val: f32) -> f32 {
-    return 1.0 / (1.0 + std::f32::consts::E.powf(val));
+    return 1.0 / (1.0 + E.powf(val * -1.0));
 }
 
 /// Sigmoid Prime Function

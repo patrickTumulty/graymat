@@ -34,6 +34,18 @@ pub mod mlrust {
         pub fn get_data(&self) -> &Array2<f32> {
             return &self.data;
         }
+
+        pub fn get_data_mut(&mut self) -> &mut Array2<f32> {
+            return &mut self.data;
+        }
+
+        pub fn sum(self) -> f32 {
+            let mut sum = 0.0;
+            for element in self.data.iter() {
+                sum += *element;
+            }
+            return sum;
+        }
     }
 
     impl Index<usize> for ColumnVector {

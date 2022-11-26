@@ -1,7 +1,7 @@
 
 pub mod mlrust {
     use std::fmt::{Display, Formatter};
-    use std::ptr::write;
+
     use ndarray::{Array2};
     use num::pow;
     use std::fmt::Write;
@@ -37,6 +37,24 @@ pub mod mlrust {
             return instance;
         }
 
+        pub fn from(weights: Vec<Array2<f32>>, biases: Vec<Array2<f32>>) -> Self {
+            assert_eq!(weights.len(), biases.len());
+            let number_of_hidden_layers: usize = weights.len();
+            let mut instance = NeuralNetwork {
+                input_neurons: weights[0].dim().1,
+                output_neurons: weights[weights.len() - 1].dim().1,
+                hidden_layer_sizes: Vec::with_capacity(number_of_hidden_layers),
+                layers: Vec::with_capacity(number_of_hidden_layers)
+            };
+            for i in 0..instance.layers.capacity() {
+                instance.layers.push(NeuralNetworkLayer {
+                    weights: weights[i].clone(),
+                    biases: biases[i].clone()
+                })
+            }
+            return instance;
+        }
+
         ///
         /// Init net work layers
         ///
@@ -67,61 +85,44 @@ pub mod mlrust {
             let mut activation: Array2<f32> = inputs.get_data().to_owned();
             for layer in self.layers {
                 activation = (layer.weights() * activation) + layer.biases();
-                array_utils::sig(&mut activation);
+                // array_utils::sig(&mut activation);
             }
             return ColumnVector::from(&activation);
         }
 
-        fn cost_derivative(result: Array2<f32>, expected: Array2<f32>) -> Array2<f32> {
-            return result - expected;
-        }
+        pub fn back_propagate(&mut self, input: ColumnVector, expected: ColumnVector) -> (Vec<Array2<f32>>, Vec<Array2<f32>>) {
 
-        fn non_linearity(data: Array2<f32>) -> Array2<f32> {
-            let mut arr: Array2<f32> = data.to_owned();
-            array_utils::sig(&mut arr);
-            return arr;
-        }
+            let mut activation: Array2<f32> = input.get_data().clone();
+            let mut layer_activations: Vec<Array2<f32>> = Vec::with_capacity(self.layers.len());
+            layer_activations.push(activation.clone());
 
-        fn d_non_linearity(data: Array2<f32>) -> Array2<f32> {
-            let mut arr: Array2<f32> = data.to_owned();
-            array_utils::sig_prime(&mut arr);
-            return arr;
-        }
-
-        fn back_prop(&mut self, input: ColumnVector, expected: ColumnVector) -> (Vec<Array2<f32>>, Vec<Array2<f32>>){
-            let number_of_layers: usize = self.layers.len();
-            let mut neg_gradient_w: Vec<Array2<f32>> = Vec::with_capacity(number_of_layers);
-            let mut neg_gradient_b: Vec<Array2<f32>> = Vec::with_capacity(number_of_layers);
-            for (i, layer) in neg_gradient_w.iter_mut().enumerate() {
-                *layer = Array2::zeros(self.layers[i].weights().dim());
-            }
-            for (i, layer) in neg_gradient_b.iter_mut().enumerate() {
-                *layer = Array2::zeros(self.layers[i].biases().dim());
-            }
-
-            let mut activation: Array2<f32> = input.get_data().to_owned();
-            let mut activations: Vec<Array2<f32>> = Vec::with_capacity(number_of_layers);
-            let mut zs: Vec<Array2<f32>> = Vec::with_capacity(number_of_layers);
             for layer in self.layers.iter() {
-                activation = (layer.weights() * activation.to_owned()) + layer.biases();
-                zs.push(activation.to_owned());
-                activation = NeuralNetwork::non_linearity(activation);
-                activations.push(activation.to_owned());
+                activation = array_utils::math::sig(&(layer.weights.dot(&activation) + &layer.biases));
+                layer_activations.push(activation.clone());
             }
 
-            let mut delta: Array2<f32> = NeuralNetwork::cost_derivative(activations[activations.len() - 1].to_owned(), expected.get_data().to_owned());
-            neg_gradient_b[number_of_layers - 1] = delta.to_owned();
-            neg_gradient_w[number_of_layers - 1] = delta.to_owned() * activations[activations.len() - 2].to_owned();
-
-            for i in 2..number_of_layers {
-                let z: Array2<f32> = zs[number_of_layers - i].to_owned();
-                let sp: Array2<f32> = NeuralNetwork::d_non_linearity(z);
-                delta = (self.layers[number_of_layers - i + 1].weights() * delta.to_owned()) * sp;
-                neg_gradient_b[number_of_layers - i] = delta.to_owned();
-                neg_gradient_w[number_of_layers - i] = delta.to_owned() * activations[number_of_layers - i - 1].to_owned();
+            let mut layer_errors: Vec<Array2<f32>> = Vec::with_capacity(self.layers.len());
+            layer_errors.push((expected.get_data() - &activation).clone());
+            let mut j = self.layers.len() - 1;
+            for i in 1..layer_errors.capacity() {
+                layer_errors.insert(0, self.layers[j].weights.clone().t().dot(&layer_errors[i - 1]));
+                j -= 1;
             }
-            return (neg_gradient_b, neg_gradient_w);
+
+            let mut weight_adjustments: Vec<Array2<f32>> = Vec::with_capacity(self.layers.len());
+            let mut bias_adjustments: Vec<Array2<f32>> = Vec::with_capacity(self.layers.len());
+
+            for i in (1..layer_activations.len()).rev() {
+                let layer_output = &layer_activations[i];
+                let layer_input = &layer_activations[i - 1];
+                let x_prime = layer_output * (1.0 - layer_output);
+                weight_adjustments.insert(0, (&layer_errors[i - 1] * &x_prime).dot(&layer_input.clone().t()));
+                bias_adjustments.insert(0, &layer_errors[i - 1] * &x_prime);
+            }
+
+            return (weight_adjustments, bias_adjustments);
         }
+
 
         ///
         /// Calculate the cost of the network

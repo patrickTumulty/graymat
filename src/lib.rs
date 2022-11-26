@@ -1,4 +1,4 @@
-extern crate core;
+
 
 mod neural_network;
 mod column_vector;
