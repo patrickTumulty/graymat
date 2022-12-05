@@ -58,27 +58,16 @@ pub mod math {
         return result;
     }
 
+    /// Multiple an array2 by a certain power
+    ///
+    /// * `arr` - Array
+    /// * `power` - Raise to the power of
     pub fn pow(arr: &Array2<f32>, power: f32) -> Array2<f32> {
         let mut result = arr.to_owned();
         for element in result.iter_mut() {
             *element = element.powf(power);
         }
         return result;
-    }
-
-    pub fn mult<T>(a1: &Array2<T>, a2: &Array2<T>) -> Array2<T>
-        where T: Mul<Output = T> + Clone + Zero
-    {
-        if a1.shape() != a2.shape() {
-            panic!("Incompatible array dimensions: [{:?}] [{:?}]", a1.shape(), a2.shape());
-        }
-        let mut result: Array2<T> = Array2::zeros(a1.dim());
-        for i in 0..result.shape()[0] {
-            for j in 0..result.shape()[1] {
-                result[[i, j]] = a1[[i, j]].clone() * a2[[i, j]].clone();
-            }
-        }
-        return result.to_owned();
     }
 }
 

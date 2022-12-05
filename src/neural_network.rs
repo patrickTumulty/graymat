@@ -1,19 +1,15 @@
 
 pub mod mlrust {
     use std::fmt::{Display, Formatter};
-
-    use ndarray::{Array2, ArrayBase};
+    use ndarray::{Array2};
     use std::fmt::Write;
-    use crate::{array_utils, ColumnVector};
-
-    const LEARNING_RATE_DEFAULT: f32 = 1.0;
+    use crate::{array2_utils, ColumnVector};
 
     pub struct NeuralNetwork {
         input_neurons: usize,
         output_neurons: usize,
         hidden_layer_sizes: Vec<usize>,
         layers: Vec<NeuralNetworkLayer>,
-        learning_rate: f32
     }
 
     impl NeuralNetwork {
@@ -32,7 +28,6 @@ pub mod mlrust {
                 input_neurons,
                 output_neurons,
                 hidden_layer_sizes,
-                learning_rate: LEARNING_RATE_DEFAULT,
                 layers: Vec::with_capacity(number_of_hidden_layers + 1)
             };
             Self::init_network_layers(&mut instance);
@@ -51,7 +46,6 @@ pub mod mlrust {
                 input_neurons: weights[0].dim().1,
                 output_neurons: weights[weights.len() - 1].dim().1,
                 hidden_layer_sizes: Vec::with_capacity(number_of_hidden_layers),
-                learning_rate: LEARNING_RATE_DEFAULT,
                 layers: Vec::with_capacity(number_of_hidden_layers)
             };
             for i in 0..instance.layers.capacity() {
@@ -80,8 +74,8 @@ pub mod mlrust {
         ///
         pub fn randomize_weights_and_biases(instance: &mut NeuralNetwork) {
             for layer in instance.layers.iter_mut() {
-                array_utils::randomize_array(layer.weights_mut(), 0.0, 1.0);
-                array_utils::randomize_array(layer.biases_mut(), 0.0, 1.0);
+                array2_utils::randomize_array(layer.weights_mut(), 0.0, 1.0);
+                array2_utils::randomize_array(layer.biases_mut(), 0.0, 1.0);
             }
         }
 
@@ -100,41 +94,31 @@ pub mod mlrust {
 
         /// Train the network given a collection of inputs and expected outputs
         ///
-        /// This method
+        /// This method will update the networks weights and biases with the averaged result of
+        /// all training data.
         ///
-        /// * `inputs` - vector of input values
-        /// * `expected_outputs` - vector of expected outputs
-        pub fn train(&mut self, inputs: &Vec<ColumnVector>, expected_outputs: &Vec<ColumnVector>) {
-
-            assert_eq!(inputs.len(), expected_outputs.len());
+        /// * `training_data` - vector of (input, target) tuples. Input is the test data and target
+        ///                     is the expected result.
+        /// * `learning_rate` - learning rate
+        pub fn train(&mut self, training_data: &Vec<(ColumnVector, ColumnVector)>, learning_rate: f32) {
 
             let adjustment_vectors = self.init_zeroed_adjustment_matrices();
-
             let mut weight_adjustments: Vec<Array2<f32>> = adjustment_vectors.0;
             let mut bias_adjustments: Vec<Array2<f32>> = adjustment_vectors.1;
 
-            for i in 0..inputs.len() {
-                let result = self.back_propagate(inputs[i].get_data(), expected_outputs[i].get_data());
+            for i in 0..training_data.len() {
+                let result = self.back_propagate(training_data[i].0.get_data(), training_data[i].1.get_data());
                 for j in 0..self.layers.len() {
-                    let wa = &result.0[j];
-                    let ba = &result.1[j];
-                    weight_adjustments[j] += wa;
-                    bias_adjustments[j] += ba;
+                    weight_adjustments[j] += &result.0[j];
+                    bias_adjustments[j] += &result.1[j];
                 }
             }
 
-            self.add_weights_and_biases(&weight_adjustments, &bias_adjustments, inputs.len() as f32)
-        }
-
-        /// Add weights and biases to the network
-        ///
-        /// * `weights` - vector of weight matrices. Each weight matrix must match the dimensions of
-        ///               each network layer.
-        /// * `biases` - vector of biases.
-        fn add_weights_and_biases(&mut self, weights: &Vec<Array2<f32>>, biases: &Vec<Array2<f32>>, number_of_examples: f32) {
+            let number_of_examples = training_data.len() as f32;
+            let lr_coef = learning_rate / number_of_examples;
             for i in 0..self.layers.len() {
-                self.layers[i].weights = &self.layers[i].weights - ((1.0 / number_of_examples) * &weights[i]);
-                self.layers[i].biases = &self.layers[i].biases - ((1.0 / number_of_examples) * &biases[i]);
+                self.layers[i].weights = &self.layers[i].weights - (lr_coef * &weight_adjustments[i]);
+                self.layers[i].biases = &self.layers[i].biases - (lr_coef * &bias_adjustments[i]);
             }
         }
 
@@ -151,6 +135,13 @@ pub mod mlrust {
             return (weight_adjustments, bias_adjustments);
         }
 
+        /// Forward propagate an input vector through the network and evaluate cost of the networks
+        /// output with an expected result. Back propagate the test error through the network.
+        ///
+        /// * `input` - Input vector
+        /// * `expected` - Expected output vector
+        /// * `returns` - A tuple of vectors. Tuple index 0 is the weight adjustments, tuple index 1
+        ///               is the bias adjustments. // TODO make named tuple or struct
         pub fn back_propagate(&self, input: &Array2<f32>, expected: &Array2<f32>) -> (Vec<Array2<f32>>, Vec<Array2<f32>>) {
 
             let mut weight_adjustments: Vec<Array2<f32>> = Vec::with_capacity(self.layers.len());
@@ -161,7 +152,15 @@ pub mod mlrust {
             return (weight_adjustments, bias_adjustments);
         }
 
-        fn back_prop_recursive(&self, layer_index: usize, x: &Array2<f32>, expected: &Array2<f32>, wav: &mut Vec<Array2<f32>>, bav: &mut Vec<Array2<f32>>) -> Array2<f32> {
+        /// Back propagate recursively
+        ///
+        /// * `layer_index` - layer index
+        /// * `x` - layer activations
+        /// * `expected` - expected result
+        /// * `wam` - weight adjustment matrix
+        /// * `bam` - bias adjustment matrix
+        /// * `returns` - layer error
+        fn back_prop_recursive(&self, layer_index: usize, x: &Array2<f32>, expected: &Array2<f32>, wam: &mut Vec<Array2<f32>>, bam: &mut Vec<Array2<f32>>) -> Array2<f32> {
 
             if layer_index == self.layers.len() {
                 return self.calculate_cost(expected, x);
@@ -172,12 +171,12 @@ pub mod mlrust {
             let z = w.dot(x) + b;
             let result: Array2<f32> = self.non_linearity(&z);
 
-            let error: Array2<f32> = self.back_prop_recursive(layer_index + 1, &result, expected, wav, bav);
+            let error: Array2<f32> = self.back_prop_recursive(layer_index + 1, &result, expected, wam, bam);
 
             let x_prime: Array2<f32> = self.non_linearity_prime(&z);
             let delta = &error * x_prime;
-            wav.insert(0, delta.dot(&x.t()));
-            bav.insert(0, delta);
+            wam.insert(0, delta.dot(&x.t()));
+            bam.insert(0, delta);
 
             return self.layers[layer_index].weights.clone().t().dot(&error);
         }
@@ -187,21 +186,21 @@ pub mod mlrust {
         /// * `expected` - expected network result
         /// * `output` - actual network result
         fn calculate_cost(&self, expected: &Array2<f32>, output: &Array2<f32>) -> Array2<f32> {
-            return expected - output;
+            return output - expected;
         }
 
         /// Network non-linearity
         ///
         /// * `x` - array2 to process
         fn non_linearity(&self, x: &Array2<f32>) -> Array2<f32> {
-            return array_utils::math::sig(x);
+            return array2_utils::math::sig(x);
         }
 
         /// Network non-linearity first derivative
         ///
         /// * `x` - array2 to process
         fn non_linearity_prime(&self, x: &Array2<f32>) -> Array2<f32> {
-            return array_utils::math::sig_prime(x);
+            return array2_utils::math::sig_prime(x);
         }
 
         ///
@@ -229,6 +228,10 @@ pub mod mlrust {
     }
 
     impl NeuralNetworkLayer {
+        /// New neural network layers
+        ///
+        /// * `inputs` - Number of inputs
+        /// * `neurons` - Number of layer neurons
         pub fn new(inputs: usize, neurons: usize) -> Self {
             return NeuralNetworkLayer {
                 weights: Array2::zeros((neurons, inputs)),
@@ -236,18 +239,30 @@ pub mod mlrust {
             };
         }
 
+        ///
+        /// Layer weights
+        ///
         pub fn weights(&self) -> &Array2<f32> {
             &self.weights
         }
 
+        ///
+        /// Layer weights (mutable)
+        ///
         pub fn weights_mut(&mut self) -> &mut Array2<f32> {
             &mut self.weights
         }
 
+        ///
+        /// Layer biases
+        ///
         pub fn biases(&self) -> &Array2<f32> {
             &self.biases
         }
 
+        ///
+        /// Layer biases (mutable)
+        ///
         pub fn biases_mut(&mut self) -> &mut Array2<f32> {
             &mut self.biases
         }

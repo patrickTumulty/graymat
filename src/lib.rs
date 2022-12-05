@@ -2,7 +2,7 @@
 
 mod neural_network;
 mod column_vector;
-pub mod array_utils;
+pub mod array2_utils;
 pub mod math_utils;
 
 pub use neural_network::mlrust::*;
