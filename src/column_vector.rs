@@ -81,4 +81,11 @@ pub mod mlrust {
             return ColumnVector::from(&(self.data.to_owned() - rhs.get_data().to_owned()));
         }
     }
+
+    impl Clone for ColumnVector {
+        fn clone(&self) -> Self {
+            return ColumnVector::from(&self.get_data());
+        }
+    }
+
 }
