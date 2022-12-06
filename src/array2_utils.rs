@@ -7,30 +7,8 @@ use rand::rngs::ThreadRng;
 
 pub mod math {
 
-    use std::ops::{Add, Mul};
     use ndarray::Array2;
-    use num::Zero;
     use crate::math_utils;
-
-    /// Sum each element of two Array2 types.
-    ///
-    /// * `lhs` - Left hand side 2 dimensional array
-    /// * `rhs` - Right hand side 2 dimensional array
-    /// * `returns` - the summed array
-    pub fn add<T>(lhs: &Array2<T>, rhs: &Array2<T>) -> Array2<T>
-        where T: Add + Copy + Zero
-    {
-        if lhs.shape() != rhs.shape() {
-            panic!("Cannot add two arrays with difference dimensions");
-        }
-        let mut arr: Array2<T> = Array2::zeros((lhs.shape()[0], lhs.shape()[1]));
-        for i in 0..arr.shape()[0] {
-            for j in 0..arr.shape()[1] {
-                arr[[i,j]] = lhs[[i,j]] + rhs[[i,j]];
-            }
-        }
-        return arr;
-    }
 
     /// Sigmoid
     ///
@@ -54,6 +32,59 @@ pub mod math {
         let mut result: Array2<f32> = arr.to_owned();
         for element in result.iter_mut() {
             *element = math_utils::sigf_prime(*element);
+        }
+        return result;
+    }
+
+    /// Hyperbolic tangent
+    ///
+    /// * `arr` - Array to process
+    pub fn tanh(arr: &Array2<f32>) -> Array2<f32> {
+        let mut result: Array2<f32> = arr.to_owned();
+        for element in result.iter_mut() {
+            *element = element.tanh();
+        }
+        return result;
+    }
+
+    /// Hyperbolic tangent
+    ///
+    /// First derivative of the hyperbolic tangent function
+    ///
+    /// * `arr` - Array to process
+    pub fn tanh_prime(arr: &Array2<f32>) -> Array2<f32> {
+        let mut result: Array2<f32> = arr.to_owned();
+        for element in result.iter_mut() {
+            *element = math_utils::tanh_prime(*element);
+        }
+        return result;
+    }
+
+    /// Rectified Linear Unit
+    ///
+    /// * `arr` - Array to process
+    pub fn relu(arr: &Array2<f32>) -> Array2<f32> {
+        let mut result: Array2<f32> = arr.to_owned();
+        for element in result.iter_mut() {
+            *element = math_utils::relu(*element);
+        }
+        return result;
+    }
+
+    /// Rectified Linear Unit
+    ///
+    /// First derivative of the Rectified Linear Unit function
+    ///
+    /// Note: The derivative of ReLU is the slope of the curve at a particular value. The slope for
+    /// values less than 0 is 0 and the slot for values above 0 is 1. The function is
+    /// non-differentiable for value 0. For simplicity, this function assumes slop 0 for values
+    /// 0.
+    ///
+    /// * `arr` - Array to process
+    pub fn relu_prime(arr: &Array2<f32>) -> Array2<f32> {
+        let mut result: Array2<f32> = arr.to_owned();
+        for element in result.iter_mut() {
+            *element = math_utils::relu_prime(*element);
         }
         return result;
     }

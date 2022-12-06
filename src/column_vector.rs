@@ -87,5 +87,4 @@ pub mod mlrust {
             return ColumnVector::from(&self.get_data());
         }
     }
-
 }

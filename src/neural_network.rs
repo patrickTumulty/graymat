@@ -5,11 +5,28 @@ pub mod mlrust {
     use std::fmt::Write;
     use crate::{array2_utils, ColumnVector};
 
+    #[derive(Debug, Copy, Clone)]
+    pub enum ActivationFunction {
+        SIGMOID,
+        TANH,
+        RELU,
+        CUSTOM
+    }
+
+    // Cost Expression
+    pub type CE = fn(result: &Array2<f32>, target: &Array2<f32>) -> Array2<f32>;
+    // Activation Expression
+    pub type AE = fn(x: &Array2<f32>) -> Array2<f32>;
+
     pub struct NeuralNetwork {
         input_neurons: usize,
         output_neurons: usize,
         hidden_layer_sizes: Vec<usize>,
         layers: Vec<NeuralNetworkLayer>,
+        cost_function: CE,
+        current_activation_function: ActivationFunction,
+        activation_function: AE,
+        activation_function_prime: AE
     }
 
     impl NeuralNetwork {
@@ -28,7 +45,11 @@ pub mod mlrust {
                 input_neurons,
                 output_neurons,
                 hidden_layer_sizes,
-                layers: Vec::with_capacity(number_of_hidden_layers + 1)
+                layers: Vec::with_capacity(number_of_hidden_layers + 1),
+                cost_function: NeuralNetwork::calculate_cost_default,
+                current_activation_function: ActivationFunction::SIGMOID,
+                activation_function: array2_utils::math::sig,
+                activation_function_prime: array2_utils::math::sig_prime
             };
             Self::init_network_layers(&mut instance);
             Self::randomize_weights_and_biases(&mut instance);
@@ -46,7 +67,11 @@ pub mod mlrust {
                 input_neurons: weights[0].dim().1,
                 output_neurons: weights[weights.len() - 1].dim().1,
                 hidden_layer_sizes: Vec::with_capacity(number_of_hidden_layers),
-                layers: Vec::with_capacity(number_of_hidden_layers)
+                layers: Vec::with_capacity(number_of_hidden_layers),
+                cost_function: NeuralNetwork::calculate_cost_default,
+                current_activation_function: ActivationFunction::SIGMOID,
+                activation_function: array2_utils::math::sig,
+                activation_function_prime: array2_utils::math::sig_prime
             };
             for i in 0..instance.layers.capacity() {
                 instance.layers.push(NeuralNetworkLayer {
@@ -55,6 +80,50 @@ pub mod mlrust {
                 })
             }
             return instance;
+        }
+
+        /// Set the activation function for this network
+        ///
+        /// * `function` - Activation function type
+        pub fn set_activation_function(&mut self, function: ActivationFunction) {
+            self.current_activation_function = function.to_owned();
+            match function {
+                ActivationFunction::SIGMOID => {
+                    self.activation_function = array2_utils::math::sig;
+                    self.activation_function_prime = array2_utils::math::sig_prime;
+                }
+                ActivationFunction::TANH => {
+                    self.activation_function = array2_utils::math::tanh;
+                    self.activation_function_prime = array2_utils::math::tanh_prime;
+                }
+                ActivationFunction::RELU => {
+                    self.activation_function = array2_utils::math::relu;
+                    self.activation_function_prime = array2_utils::math::relu_prime;
+                }
+                ActivationFunction::CUSTOM => {
+                    // Do Nothing
+                }
+            }
+        }
+
+        /// Set a custom activation function
+        ///
+        /// * `function` - Activation function expression
+        /// * `function_prime` - First derivative of activation function expression
+        pub fn set_custom_activation_function(&mut self,
+                                              function: AE,
+                                              function_prime: AE)
+        {
+            self.activation_function = function;
+            self.activation_function_prime = function_prime;
+            self.current_activation_function = ActivationFunction::CUSTOM;
+        }
+
+        /// Set the cost function for this neural network
+        ///
+        /// * `expression` - Cost expression
+        pub fn set_cost_function(&mut self, expression: CE) {
+            self.cost_function = expression;
         }
 
         ///
@@ -72,7 +141,7 @@ pub mod mlrust {
         ///
         /// Init the network with random values
         ///
-        pub fn randomize_weights_and_biases(instance: &mut NeuralNetwork) {
+        fn randomize_weights_and_biases(instance: &mut NeuralNetwork) {
             for layer in instance.layers.iter_mut() {
                 array2_utils::randomize_array(layer.weights_mut(), 0.0, 1.0);
                 array2_utils::randomize_array(layer.biases_mut(), 0.0, 1.0);
@@ -86,8 +155,7 @@ pub mod mlrust {
         pub fn feed_forward(&self, inputs: ColumnVector) -> ColumnVector {
             let mut activation: Array2<f32> = inputs.get_data().to_owned();
             for layer in self.layers.iter() {
-                let z = (layer.weights().dot(&activation)) + layer.biases();
-                activation = self.non_linearity(&z);
+                activation = self.non_linearity(&((layer.weights().dot(&activation)) + layer.biases()));
             }
             return ColumnVector::from(&activation);
         }
@@ -156,14 +224,18 @@ pub mod mlrust {
         ///
         /// * `layer_index` - layer index
         /// * `x` - layer activations
-        /// * `expected` - expected result
+        /// * `y` - expected result
         /// * `wam` - weight adjustment matrix
         /// * `bam` - bias adjustment matrix
         /// * `returns` - layer error
-        fn back_prop_recursive(&self, layer_index: usize, x: &Array2<f32>, expected: &Array2<f32>, wam: &mut Vec<Array2<f32>>, bam: &mut Vec<Array2<f32>>) -> Array2<f32> {
-
+        fn back_prop_recursive(&self, layer_index: usize,
+                               x: &Array2<f32>,
+                               y: &Array2<f32>,
+                               wam: &mut Vec<Array2<f32>>,
+                               bam: &mut Vec<Array2<f32>>) -> Array2<f32>
+        {
             if layer_index == self.layers.len() {
-                return self.calculate_cost(expected, x);
+                return self.calculate_cost(x, y);
             }
 
             let w: &Array2<f32> = &self.layers[layer_index].weights;
@@ -171,7 +243,7 @@ pub mod mlrust {
             let z = w.dot(x) + b;
             let result: Array2<f32> = self.non_linearity(&z);
 
-            let error: Array2<f32> = self.back_prop_recursive(layer_index + 1, &result, expected, wam, bam);
+            let error: Array2<f32> = self.back_prop_recursive(layer_index + 1, &result, y, wam, bam);
 
             let x_prime: Array2<f32> = self.non_linearity_prime(&z);
             let delta = &error * x_prime;
@@ -183,24 +255,32 @@ pub mod mlrust {
 
         /// Calculate network cost
         ///
-        /// * `expected` - expected network result
-        /// * `output` - actual network result
-        fn calculate_cost(&self, expected: &Array2<f32>, output: &Array2<f32>) -> Array2<f32> {
-            return output - expected;
+        /// * `result` - network output result
+        /// * `target` - target network result
+        fn calculate_cost(&self, result: &Array2<f32>, target: &Array2<f32>) -> Array2<f32> {
+            return (self.cost_function)(result, target);
+        }
+
+        /// Calculate network cost
+        ///
+        /// * `result` - network output result
+        /// * `target` - target network result
+        fn calculate_cost_default(result: &Array2<f32>, target: &Array2<f32>) -> Array2<f32> {
+            return result - target;
         }
 
         /// Network non-linearity
         ///
         /// * `x` - array2 to process
         fn non_linearity(&self, x: &Array2<f32>) -> Array2<f32> {
-            return array2_utils::math::sig(x);
+            return (self.activation_function)(x);
         }
 
         /// Network non-linearity first derivative
         ///
         /// * `x` - array2 to process
         fn non_linearity_prime(&self, x: &Array2<f32>) -> Array2<f32> {
-            return array2_utils::math::sig_prime(x);
+            return (self.activation_function_prime)(x);
         }
 
         ///
