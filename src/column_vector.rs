@@ -1,5 +1,5 @@
 
-pub mod mlrust {
+pub mod graymat {
     use std::fmt::{Display, Formatter};
     use std::ops::{Index, IndexMut, Sub, SubAssign};
     use ndarray::{Array2};

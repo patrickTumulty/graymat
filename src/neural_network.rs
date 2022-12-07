@@ -1,5 +1,5 @@
 
-pub mod mlrust {
+pub mod graymat {
     use std::fmt::{Display, Formatter};
     use ndarray::{Array2};
     use std::fmt::Write;
@@ -152,7 +152,7 @@ pub mod mlrust {
         ///
         /// * `inputs` - ColumnVector inputs
         /// * `returns` - ColumnVector outputs
-        pub fn feed_forward(&self, inputs: ColumnVector) -> ColumnVector {
+        pub fn evaluate(&self, inputs: ColumnVector) -> ColumnVector {
             let mut activation: Array2<f32> = inputs.get_data().to_owned();
             for layer in self.layers.iter() {
                 activation = self.non_linearity(&((layer.weights().dot(&activation)) + layer.biases()));
