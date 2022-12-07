@@ -1,5 +1,6 @@
 
 pub mod graymat {
+
     use std::fmt::{Display, Formatter};
     use ndarray::{Array2};
     use std::fmt::Write;
