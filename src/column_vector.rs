@@ -2,7 +2,22 @@
 pub mod graymat {
     use std::fmt::{Display, Formatter};
     use std::ops::{Index, IndexMut, Sub, SubAssign};
-    use ndarray::{Array2};
+    use ndarray::{array, Array2, ArrayView};
+
+    /// Create a **[`ColumnVector`]** from a sequence of numbers.
+    /// This macro automatically casts all input values to floats.
+    ///
+    /// ```
+    /// use graymat::cvec;
+    ///
+    /// let cv = cvec![-12, 3.14159, 2.71828, 42];
+    /// ```
+    #[macro_export]
+    macro_rules! cvec {
+        ($($x:expr),*) => {{
+            ColumnVector::from(&array![[$($x as f32,)*]])
+        }};
+    }
 
     pub struct ColumnVector {
         data: Array2<f32>
@@ -19,6 +34,10 @@ pub mod graymat {
             return Self { data: data_copy };
         }
 
+        pub fn empty() -> Self {
+            return ColumnVector::zeros(0);
+        }
+
         pub fn zeros(size: usize) -> Self {
             return Self { data: Array2::zeros((size, 1))}
         }
@@ -29,6 +48,10 @@ pub mod graymat {
 
         pub fn size(&self) -> usize {
             return self.data.len();
+        }
+
+        pub fn push(&mut self, x: f32) {
+            self.data.push_row(ArrayView::from(&[x])).unwrap();
         }
 
         pub fn get_data(&self) -> &Array2<f32> {
