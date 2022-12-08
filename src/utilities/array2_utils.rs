@@ -8,7 +8,7 @@ use rand::rngs::ThreadRng;
 pub mod math {
 
     use ndarray::Array2;
-    use crate::math_utils;
+    use crate::utilities::math_utils;
 
     /// Sigmoid
     ///
