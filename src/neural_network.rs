@@ -3,6 +3,7 @@ use ndarray::{Array2};
 use std::fmt::Write;
 
 use crate::column_vector::ColumnVector;
+use crate::neural_network_io::{check_gnm_filepath, from_file, to_file};
 use crate::utilities::array2_utils;
 
 #[derive(Debug, Copy, Clone)]
@@ -288,6 +289,32 @@ impl NeuralNetwork {
     ///
     pub fn layers(&self) -> &Vec<NeuralNetworkLayer> {
         &self.layers
+    }
+
+    /// Save the current network to a file
+    ///
+    /// * `path` - File path
+    /// * `filename` - Filename. The .gnm file extension will be automatically added if not already set
+    pub fn to_file(&self, path: &str, filename: &str) {
+        let check_file_result = check_gnm_filepath(path, filename);
+        let filepath = match check_file_result {
+            Ok(filepath) => filepath,
+            Err(error) => panic!("Error saving network to file: {:?}", error)
+        };
+        to_file(filepath, &self);
+    }
+
+    /// Load a neural network instance from a file
+    ///
+    /// * `path` - File path
+    /// * `filename` - Filename. The .gnm file extension will be automatically added if not already set
+    pub fn from_file(path: &str, filename: &str) -> Self {
+        let check_file_result = check_gnm_filepath(path, filename);
+        let filepath = match check_file_result {
+            Ok(filepath) => filepath,
+            Err(error) => panic!("Error saving network to file: {:?}", error)
+        };
+        return from_file(filepath);
     }
 }
 
