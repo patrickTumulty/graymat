@@ -84,16 +84,7 @@ pub fn check_gnm_filepath(path: &str, filename: &str) -> Result<String, io::Erro
 }
 
 /// Write a NeuralNetwork to a file
-/// # Example
-/// ```
-/// use graymat::neural_network::NeuralNetwork;
-/// use graymat::neural_network_io::{check_gnm_filepath, to_file};
-///
-/// let nn = NeuralNetwork::new(2, 2, vec![2]);
-/// let path = "/home";
-/// let filename = "test";
-/// to_file(check_gnm_filepath(path, filename).unwrap(), &nn);
-/// ```
+
 /// # Arguments
 /// * `path` - Full filepath with filename and extension
 /// * `network` - The NeuralNetwork to save
@@ -127,15 +118,7 @@ pub fn to_file(path: String, network: &NeuralNetwork) {
 }
 
 /// Read a NeuralNetwork from a file
-/// # Example
-/// ```
-/// use graymat::neural_network::NeuralNetwork;
-/// use graymat::neural_network_io::{check_gnm_filepath, from_file, to_file};
 ///
-/// let path = "/home";
-/// let filename = "test"; // result /home/test.gnm
-/// let nn: NeuralNetwork = from_file(check_gnm_filepath(path, filename).unwrap());
-/// ```
 /// # Arguments
 /// * `path` - Filepath to network file
 /// * `returns` - NeuralNetwork
