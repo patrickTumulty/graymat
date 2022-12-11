@@ -11,7 +11,7 @@ use crate::utilities::string_utils::copy_string_into_byte_array;
 const FILE_HEADER_SIZE_BYTES: u64 = 36;
 const LAYER_HEADER_SIZE_BYTES: u64 = 28;
 const META_SIZE: usize = 12;
-const GRAYMAT_NETWORK_FILE_EXTENSION: &str = ".gnm"; // GrayMat Network Model
+pub const GRAYMAT_NETWORK_FILE_EXTENSION: &str = ".gnm"; // GrayMat Network Model
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileHeader {
@@ -65,7 +65,8 @@ impl LayerHeader {
 /// * `filename` - Filename. The .gnm file extension will be automatically added if not already set
 /// * `returns` - Result string if path exists, else Error
 pub fn check_gnm_filepath(path: &str, filename: &str) -> Result<String, io::Error> {
-    if Path::new(path).exists() {
+
+    if !Path::new(path).exists() {
         return Err(io::Error::new(ErrorKind::NotFound, "Invalid Filepath: Path does not exist"));
     }
 
