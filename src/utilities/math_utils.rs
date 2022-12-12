@@ -64,7 +64,6 @@ pub fn relu_prime(val: f32) -> f32 {
 /// * `returns` - true if lhs and rhs are equal within the designated precision
 pub fn float_compare(lhs: f32, rhs: f32, precision: u8) -> bool {
     let mult = 10f32.powi(precision as i32);
-    println!("{} {}", ((lhs * mult) as u32), ((rhs * mult) as u32));
     return ((lhs * mult) as u32) == ((rhs * mult) as u32);
 }
 

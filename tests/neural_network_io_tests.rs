@@ -1,5 +1,5 @@
-
-use graymat::neural_network::NeuralNetwork;
+use graymat::activation_function::ActivationFunction;
+use graymat::neural_network::{NeuralNetwork};
 use graymat::neural_network_io::{check_gnm_filepath, GRAYMAT_NETWORK_FILE_EXTENSION};
 
 #[test]
@@ -7,12 +7,13 @@ fn test_network_io() {
     let path = "./";
     let filename = "network_io_test";
 
-    let nn_original = NeuralNetwork::new(100, 10, vec![25, 20, 25]);
+    let nn_original = NeuralNetwork::new(100, 10, vec![25, 20, 25], ActivationFunction::RELU);
 
     nn_original.to_file(path, filename);
 
     let nn_loaded = NeuralNetwork::from_file(path, filename);
 
+    assert_eq!(nn_original.activation_function(), nn_loaded.activation_function());
     assert_eq!(nn_original.layers().len(), nn_loaded.layers().len());
 
     for i in 0..nn_original.layers().len() {

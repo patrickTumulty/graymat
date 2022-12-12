@@ -4,11 +4,12 @@ use std::io::{ErrorKind, Read, Write};
 use std::path::Path;
 
 use ndarray::{Array2};
-use crate::neural_network::NeuralNetwork;
+use crate::neural_network::{NeuralNetwork};
 use serde::{Serialize, Deserialize};
+use crate::activation_function::ActivationFunction;
 use crate::utilities::string_utils::copy_string_into_byte_array;
 
-const FILE_HEADER_SIZE_BYTES: u64 = 36;
+const FILE_HEADER_SIZE_BYTES: u64 = 37;
 const LAYER_HEADER_SIZE_BYTES: u64 = 28;
 const META_SIZE: usize = 12;
 pub const GRAYMAT_NETWORK_FILE_EXTENSION: &str = ".gnm"; // GrayMat Network Model
@@ -19,19 +20,21 @@ struct FileHeader {
     meta: [u8; META_SIZE],
     pub header_size_bytes: u64,
     pub layer_header_size_bytes: u64,
-    pub number_of_layers: u32
+    pub number_of_layers: u32,
+    pub activation_function: u8
 }
 
 impl FileHeader {
-    pub fn new(number_of_layers: u32) -> Self {
+    pub fn new(number_of_layers: u32, activation_function: u8) -> Self {
         let mut ca: [u8; META_SIZE] = [0; META_SIZE];
         copy_string_into_byte_array("GrayMay(0_0)", &mut ca);
         return Self {
-            version: 0x01_00_00, // v1.00
+            version: 0x01_01_00, // v1.01.00
             meta: ca,
             header_size_bytes: FILE_HEADER_SIZE_BYTES,
             layer_header_size_bytes: LAYER_HEADER_SIZE_BYTES,
-            number_of_layers
+            number_of_layers,
+            activation_function
         };
     }
 }
@@ -93,7 +96,8 @@ pub fn to_file(path: String, network: &NeuralNetwork) {
 
     let mut file = File::create(path).unwrap();
 
-    let file_header = FileHeader::new(network.layers().len() as u32);
+    let file_header = FileHeader::new(network.layers().len() as u32,
+                                      network.activation_function() as u8);
     let file_header_bytes = bincode::serialize(&file_header).unwrap();
 
     file.write(&file_header_bytes).unwrap();
@@ -143,7 +147,13 @@ pub fn from_file(path: String) -> NeuralNetwork {
         load_layer_biases(&mut file, &mut loaded_biases, &layer_header);
     }
 
-    return NeuralNetwork::from(loaded_weights, loaded_biases);
+    let af_option = ActivationFunction::from_u8(file_header.activation_function); // TODO handle this error case
+    let mut activation: ActivationFunction = ActivationFunction::SIGMOID;
+    if !af_option.is_none() {
+       activation = af_option.unwrap();
+    }
+
+    return NeuralNetwork::from(loaded_weights, loaded_biases, activation);
 }
 
 /// Load Layer Network

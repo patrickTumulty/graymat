@@ -1,9 +1,10 @@
 use ndarray::array;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use crate::activation_function::ActivationFunction;
 use crate::column_vector::ColumnVector;
 use crate::cvec;
-use crate::neural_network::NeuralNetwork;
+use crate::neural_network::{NeuralNetwork};
 
 /// **Example Script: Binary to Int**
 ///
@@ -12,7 +13,7 @@ use crate::neural_network::NeuralNetwork;
 pub fn binary_to_int() {
     println!("Running Binary to Int Example!");
 
-    let mut nn = NeuralNetwork::new(4, 16, vec![12]);
+    let mut nn = NeuralNetwork::new(4, 16, vec![12], ActivationFunction::SIGMOID);
     let mut training_data: Vec<(ColumnVector, ColumnVector)> = Vec::with_capacity(16);
 
     for i in 0..16 {
