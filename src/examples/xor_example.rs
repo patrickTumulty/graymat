@@ -1,13 +1,14 @@
 use ndarray::array;
 use rand::{Rng, thread_rng};
+use crate::activation_function::ActivationFunction;
 use crate::column_vector::ColumnVector;
 use crate::cvec;
-use crate::neural_network::NeuralNetwork;
+use crate::neural_network::{NeuralNetwork};
 
 pub fn xor() {
     println!("Running XOR Example!");
 
-    let mut nn = NeuralNetwork::new(2, 1, vec![2]);
+    let mut nn = NeuralNetwork::new(2, 1, vec![2], ActivationFunction::SIGMOID);
 
     let mut test_data = Vec::with_capacity(4);
     test_data.push((cvec![1, 0], cvec![1]));

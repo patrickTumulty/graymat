@@ -1,18 +1,11 @@
 use std::fmt::{Display, Formatter};
 use ndarray::{Array2};
 use std::fmt::Write;
-
+use crate::activation_function::ActivationFunction;
 use crate::column_vector::ColumnVector;
 use crate::neural_network_io::{check_gnm_filepath, from_file, to_file};
 use crate::utilities::array2_utils;
 
-#[derive(Debug, Copy, Clone)]
-pub enum ActivationFunction {
-    SIGMOID,
-    TANH,
-    RELU,
-    CUSTOM
-}
 
 // Cost Expression
 pub type CE = fn(result: &Array2<f32>, target: &Array2<f32>) -> Array2<f32>;
@@ -25,9 +18,9 @@ pub struct NeuralNetwork {
     hidden_layer_sizes: Vec<usize>,
     layers: Vec<NeuralNetworkLayer>,
     cost_function: CE,
-    current_activation_function: ActivationFunction,
-    activation_function: AE,
-    activation_function_prime: AE
+    activation_function: ActivationFunction,
+    activation_expression: AE,
+    activation_expression_prime: AE
 }
 
 impl NeuralNetwork {
@@ -40,7 +33,8 @@ impl NeuralNetwork {
     /// * `hidden_layer_sizes` - Vector defining how many hidden layers there should be and the
     ///                          size of each hidden layer. An empty vector results in the input
     ///                          neurons being linked directly to the output neurons.
-    pub fn new(input_neurons: usize, output_neurons: usize, hidden_layer_sizes: Vec<usize>) -> Self {
+    /// * `activation` - Activation function
+    pub fn new(input_neurons: usize, output_neurons: usize, hidden_layer_sizes: Vec<usize>, activation: ActivationFunction) -> Self {
         let number_of_hidden_layers: usize = hidden_layer_sizes.len();
         let mut instance = NeuralNetwork {
             input_neurons,
@@ -48,10 +42,11 @@ impl NeuralNetwork {
             hidden_layer_sizes,
             layers: Vec::with_capacity(number_of_hidden_layers + 1),
             cost_function: NeuralNetwork::calculate_cost_default,
-            current_activation_function: ActivationFunction::SIGMOID,
-            activation_function: array2_utils::math::sig,
-            activation_function_prime: array2_utils::math::sig_prime
+            activation_function: ActivationFunction::SIGMOID,
+            activation_expression: array2_utils::math::sig,
+            activation_expression_prime: array2_utils::math::sig_prime
         };
+        Self::set_activation_function(&mut instance, activation);
         Self::init_network_layers(&mut instance);
         Self::randomize_weights_and_biases(&mut instance);
         return instance;
@@ -61,7 +56,8 @@ impl NeuralNetwork {
     ///
     /// * `weights` - Neural Network weights in ascending order
     /// * `biases` - Neural Network biases in ascending order
-    pub fn from(weights: Vec<Array2<f32>>, biases: Vec<Array2<f32>>) -> Self {
+    /// * `activation` - Activation function
+    pub fn from(weights: Vec<Array2<f32>>, biases: Vec<Array2<f32>>, activation: ActivationFunction) -> Self {
         assert_eq!(weights.len(), biases.len());
         let number_of_hidden_layers: usize = weights.len();
         let mut instance = NeuralNetwork {
@@ -70,10 +66,11 @@ impl NeuralNetwork {
             hidden_layer_sizes: Vec::with_capacity(number_of_hidden_layers),
             layers: Vec::with_capacity(number_of_hidden_layers),
             cost_function: NeuralNetwork::calculate_cost_default,
-            current_activation_function: ActivationFunction::SIGMOID,
-            activation_function: array2_utils::math::sig,
-            activation_function_prime: array2_utils::math::sig_prime
+            activation_function: ActivationFunction::SIGMOID,
+            activation_expression: array2_utils::math::sig,
+            activation_expression_prime: array2_utils::math::sig_prime
         };
+        Self::set_activation_function(&mut instance, activation);
         for i in 0..instance.layers.capacity() {
             instance.layers.push(NeuralNetworkLayer {
                 weights: weights[i].clone(),
@@ -87,40 +84,27 @@ impl NeuralNetwork {
     ///
     /// * `function` - Activation function type
     pub fn set_activation_function(&mut self, function: ActivationFunction) {
-        self.current_activation_function = function.to_owned();
+        self.activation_function = function.to_owned();
         match function {
             ActivationFunction::SIGMOID => {
-                self.activation_function = array2_utils::math::sig;
-                self.activation_function_prime = array2_utils::math::sig_prime;
+                self.activation_expression = array2_utils::math::sig;
+                self.activation_expression_prime = array2_utils::math::sig_prime;
             }
             ActivationFunction::TANH => {
-                self.activation_function = array2_utils::math::tanh;
-                self.activation_function_prime = array2_utils::math::tanh_prime;
+                self.activation_expression = array2_utils::math::tanh;
+                self.activation_expression_prime = array2_utils::math::tanh_prime;
             }
             ActivationFunction::RELU => {
-                self.activation_function = array2_utils::math::relu;
-                self.activation_function_prime = array2_utils::math::relu_prime;
-            }
-            ActivationFunction::CUSTOM => {
-                // Do Nothing
+                self.activation_expression = array2_utils::math::relu;
+                self.activation_expression_prime = array2_utils::math::relu_prime;
             }
         }
     }
 
-    /// Set a custom activation function
-    ///
-    /// * `function` - Activation function expression
-    /// * `function_prime` - First derivative of activation function expression
-    pub fn set_custom_activation_function(&mut self,
-                                          function: AE,
-                                          function_prime: AE)
-    {
-        self.activation_function = function;
-        self.activation_function_prime = function_prime;
-        self.current_activation_function = ActivationFunction::CUSTOM;
-    }
-
     /// Set the cost function for this neural network
+    ///
+    /// # Note:
+    /// Custom cost functions will not be saved into a .gnm file.
     ///
     /// * `expression` - Cost expression
     pub fn set_cost_function(&mut self, expression: CE) {
@@ -274,14 +258,14 @@ impl NeuralNetwork {
     ///
     /// * `x` - array2 to process
     fn non_linearity(&self, x: &Array2<f32>) -> Array2<f32> {
-        return (self.activation_function)(x);
+        return (self.activation_expression)(x);
     }
 
     /// Network non-linearity first derivative
     ///
     /// * `x` - array2 to process
     fn non_linearity_prime(&self, x: &Array2<f32>) -> Array2<f32> {
-        return (self.activation_function_prime)(x);
+        return (self.activation_expression_prime)(x);
     }
 
     ///
@@ -316,11 +300,19 @@ impl NeuralNetwork {
         };
         return from_file(filepath);
     }
+
+    ///
+    /// Get network activation function
+    ///
+    pub fn activation_function(&self) -> ActivationFunction {
+        self.activation_function
+    }
 }
 
 impl Display for NeuralNetwork {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut s = "".to_string();
+        write!(s, "Activation Function: {}\n", ActivationFunction::convert_to_string(self.activation_function)).unwrap();
         for (i, layer) in self.layers.iter().enumerate() {
             write!(s, "Layer {} ({}x{})\n", i + 1, layer.weights.shape()[0], layer.weights.shape()[1]).unwrap();
             write!(s, "{}", *layer).unwrap();
