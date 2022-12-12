@@ -26,11 +26,10 @@ impl ActivationFunction {
     ///
     /// * `activation` - activation function
     pub fn convert_to_string(activation: ActivationFunction) -> String {
-        match activation {
+        return match activation {
             SIGMOID => "Sigmoid".to_owned(),
             TANH => "Tanh".to_owned(),
             RELU => "ReLU".to_owned()
         };
-        "Unknown".to_owned()
     }
 }
