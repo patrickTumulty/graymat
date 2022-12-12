@@ -5,10 +5,16 @@ use ndarray::{Array2, ArrayView};
 /// Create a **[`ColumnVector`]** from a sequence of numbers.
 /// This macro automatically casts all input values to floats.
 ///
+/// # Example
 /// ```
+/// use ndarray::{array, Array2};
+/// use graymat::column_vector::ColumnVector;
 /// use graymat::cvec;
 ///
-/// let cv = cvec![-12, 3.14, 2.71, 42];
+/// let cv1 = cvec![-12, 3.14, 2.71, 42];
+/// let cv2 = ColumnVector::from(&Array2::from(array![[-12.0, 3.14, 2.71, 42.0]]));
+///
+/// assert_eq!(cv1 == cv2, true);
 /// ```
 #[macro_export]
 macro_rules! cvec {
@@ -107,4 +113,14 @@ impl Clone for ColumnVector {
     fn clone(&self) -> Self {
         return ColumnVector::from(&self.get_data());
     }
+}
+
+impl PartialEq<Self> for ColumnVector {
+    fn eq(&self, other: &Self) -> bool {
+        return self.data == other.get_data();
+    }
+}
+
+impl Eq for ColumnVector {
+
 }

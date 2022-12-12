@@ -11,7 +11,7 @@ use crate::utilities::string_utils::copy_string_into_byte_array;
 const FILE_HEADER_SIZE_BYTES: u64 = 36;
 const LAYER_HEADER_SIZE_BYTES: u64 = 28;
 const META_SIZE: usize = 12;
-const GRAYMAT_NETWORK_FILE_EXTENSION: &str = ".gnm"; // GrayMat Network Model
+pub const GRAYMAT_NETWORK_FILE_EXTENSION: &str = ".gnm"; // GrayMat Network Model
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileHeader {
@@ -65,7 +65,8 @@ impl LayerHeader {
 /// * `filename` - Filename. The .gnm file extension will be automatically added if not already set
 /// * `returns` - Result string if path exists, else Error
 pub fn check_gnm_filepath(path: &str, filename: &str) -> Result<String, io::Error> {
-    if Path::new(path).exists() {
+
+    if !Path::new(path).exists() {
         return Err(io::Error::new(ErrorKind::NotFound, "Invalid Filepath: Path does not exist"));
     }
 
@@ -84,16 +85,7 @@ pub fn check_gnm_filepath(path: &str, filename: &str) -> Result<String, io::Erro
 }
 
 /// Write a NeuralNetwork to a file
-/// # Example
-/// ```
-/// use graymat::neural_network::NeuralNetwork;
-/// use graymat::neural_network_io::{check_gnm_filepath, to_file};
-///
-/// let nn = NeuralNetwork::new(2, 2, vec![2]);
-/// let path = "/home";
-/// let filename = "test";
-/// to_file(check_gnm_filepath(path, filename).unwrap(), &nn);
-/// ```
+
 /// # Arguments
 /// * `path` - Full filepath with filename and extension
 /// * `network` - The NeuralNetwork to save
@@ -127,15 +119,7 @@ pub fn to_file(path: String, network: &NeuralNetwork) {
 }
 
 /// Read a NeuralNetwork from a file
-/// # Example
-/// ```
-/// use graymat::neural_network::NeuralNetwork;
-/// use graymat::neural_network_io::{check_gnm_filepath, from_file, to_file};
 ///
-/// let path = "/home";
-/// let filename = "test"; // result /home/test.gnm
-/// let nn: NeuralNetwork = from_file(check_gnm_filepath(path, filename).unwrap());
-/// ```
 /// # Arguments
 /// * `path` - Filepath to network file
 /// * `returns` - NeuralNetwork

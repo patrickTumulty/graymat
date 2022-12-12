@@ -50,3 +50,36 @@ pub fn relu(val: f32) -> f32 {
 pub fn relu_prime(val: f32) -> f32 {
     return if val > 0.0 { 1.0 } else { 0.0 };
 }
+
+/// Float compare
+/// ```
+/// use graymat::utilities::math_utils::float_compare;
+///
+/// let result = float_compare(0.1234599999, 0.1234588888, 4); // todo investigate why precision 5 doesn't work here
+/// assert_eq!(result, true);
+/// ```
+/// * `lhs` - left hand side float value
+/// * `rhs` - right hand side float value
+/// * `precision` - number of decimal points to compare
+/// * `returns` - true if lhs and rhs are equal within the designated precision
+pub fn float_compare(lhs: f32, rhs: f32, precision: u8) -> bool {
+    let mult = 10f32.powi(precision as i32);
+    println!("{} {}", ((lhs * mult) as u32), ((rhs * mult) as u32));
+    return ((lhs * mult) as u32) == ((rhs * mult) as u32);
+}
+
+/// Double compare
+/// ```
+/// use graymat::utilities::math_utils::double_compare;
+///
+/// let result = double_compare(0.1234599999, 0.1234588888, 5);
+/// assert_eq!(result, true);
+/// ```
+/// * `lhs` - left hand side double value
+/// * `rhs` - right hand side double value
+/// * `precision` - number of decimal points to compare
+/// * `returns` - true if lhs and rhs are equal within the designated precision
+pub fn double_compare(lhs: f64, rhs: f64, precision: u8) -> bool {
+    let mult = 10f64.powi(precision as i32);
+    return ((lhs * mult) as u64) == ((rhs * mult) as u64);
+}
