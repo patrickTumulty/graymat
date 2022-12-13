@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter};
 use ndarray::{Array2};
 use std::fmt::Write;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use crate::activation_function::ActivationFunction;
 use crate::column_vector::ColumnVector;
 use crate::neural_network_io::{check_gnm_filepath, from_file, to_file};
@@ -145,6 +147,32 @@ impl NeuralNetwork {
         return ColumnVector::from(&activation);
     }
 
+    /// Train the network using stochastic gradient descent
+    ///
+    /// * `training_data` - Training data is a list of tuples (x, y) where x is the input data, and
+    ///                     y is the target output.
+    /// * `iterations` - Number of times to iterate the training data
+    /// * `batch_size` - Size of mini batches
+    /// * `learning_rate` - The learning rate
+    pub fn train(&mut self,
+                 mut training_data: Vec<(ColumnVector, ColumnVector)>,
+                 iterations: u32,
+                 batch_size: usize,
+                 learning_rate: f32)
+    {
+        let mut batch: Vec<(ColumnVector, ColumnVector)> = Vec::with_capacity(batch_size);
+        for _i in 0..iterations {
+            training_data.shuffle(&mut thread_rng());
+            for j in 0..(training_data.len() / batch_size) {
+                let lower = j * batch_size;
+                let upper = lower + batch_size;
+                training_data.as_slice()[lower..upper]
+                             .clone_into(&mut batch);
+                self.train_batch(&batch, learning_rate);
+            }
+        }
+    }
+
     /// Train the network given a collection of inputs and expected outputs
     ///
     /// This method will update the networks weights and biases with the averaged result of
@@ -153,7 +181,7 @@ impl NeuralNetwork {
     /// * `training_data` - vector of (input, target) tuples. Input is the test data and target
     ///                     is the expected result.
     /// * `learning_rate` - learning rate
-    pub fn train(&mut self, training_data: &Vec<(ColumnVector, ColumnVector)>, learning_rate: f32) {
+    fn train_batch(&mut self, training_data: &Vec<(ColumnVector, ColumnVector)>, learning_rate: f32) {
 
         let adjustment_vectors = self.init_zeroed_adjustment_matrices();
         let mut weight_adjustments: Vec<Array2<f32>> = adjustment_vectors.0;
