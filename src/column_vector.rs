@@ -38,6 +38,10 @@ impl ColumnVector {
         return Self { data: data_copy };
     }
 
+    pub fn from_vec(data: Vec<f32>) -> Self {
+        return ColumnVector::from(&Array2::from_shape_vec((1, data.len()), data).unwrap());
+    }
+
     pub fn empty() -> Self {
         return ColumnVector::zeros(0);
     }
